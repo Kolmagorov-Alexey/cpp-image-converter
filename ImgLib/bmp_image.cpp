@@ -10,14 +10,16 @@ using namespace std;
 
 namespace img_lib {
 
-    // С„СѓРЅРєС†РёСЏ РІС‹С‡РёСЃР»РµРЅРёСЏ РѕС‚СЃС‚СѓРїР° РїРѕ С€РёСЂРёРЅРµ
+    // функция вычисления отступа по ширине
     static int GetBMPStride(int w) {
         return 4 * ((w * 3 + 3) / 4);
     }
 
+    static constexpr uint16_t BF_TYPE = 0x4D42;  // {'B', 'M'};
+
     PACKED_STRUCT_BEGIN BitmapFileHeader{
 
-        uint16_t bfType = 0x4D42; // {'B', 'M'};
+        uint16_t bfType = BF_TYPE;
         uint32_t bfSize = 0;
         uint16_t bfReserved1 = 0;
         uint16_t bfReserved2 = 0;
@@ -75,18 +77,6 @@ namespace img_lib {
         }
         return out.good();
     }
-    bool GetFirstTwoByte(ifstream& ifs) {
-        char sign_bm[2];
-        ifs.read(sign_bm, 2);
-        if (string bm(sign_bm, 2); bm == "BM"s) {
-           ifs.seekg(0, ios::beg);
-           return true;
-        }
-        else {
-            cout << "NO BMP INPUT FILE" << endl;
-            return false;
-        }
-    }
 
     Image LoadBMP(const Path& file) {
 
@@ -94,22 +84,24 @@ namespace img_lib {
         BitmapInfoHeader info_header;
         ifstream ifs(file, ios::binary);
 
-        if (!(ifs.is_open() && GetFirstTwoByte(ifs))) {
-            Image  image_default;
-            return image_default;
+        if (!ifs.is_open()) {
+            return Image();
         }
-      
+
         ifs.read(reinterpret_cast<char*>(&file_header), sizeof(BitmapFileHeader));
         ifs.read(reinterpret_cast<char*>(&info_header), sizeof(BitmapInfoHeader));
+
+        if (file_header.bfType != BF_TYPE) {
+            return Image();
+        }
 
         int width = info_header.biWidth;
         int height = info_header.biHeight;
         int stride = GetBMPStride(width);
-        
+
         if (!(width > 0 && height > 0)) {
-            cout << "File bmp bad of width,height "<<endl;
-            Image  image_default;
-            return image_default;
+                  
+            return Image();
         }
         Image image(width, height, Color::Black());
         vector<char> buff(stride);
